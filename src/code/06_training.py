@@ -11,6 +11,9 @@ import os
 from sklearn.decomposition import PCA
 from keras import regularizers  # Import regularizers
 import keras_tuner as kt
+from tensorflow.keras.optimizers import AdamW
+from sklearn.model_selection import train_test_split
+
 
 
 #from keras import backend as K
@@ -110,7 +113,7 @@ def Conv2d_BN(x, nb_filter, kernel_size, strides=(1, 1), padding='same', name=No
         bn_name = None
         conv_name = None
 
-    x = Conv2D(nb_filter, kernel_size, padding=padding, strides=strides, activation='relu', name=conv_name, kernel_regularizer=regularizers.l2(0.01))(x)
+    x = Conv2D(nb_filter, kernel_size, padding=padding, strides=strides, activation='relu', name=conv_name)(x)
     x = BatchNormalization(axis=-1, name=bn_name)(x)
     return x
 
@@ -130,16 +133,16 @@ def network_with_attention(height, width, channels, classes):
     inpt = Input(shape=(height, width, channels))
 
     # adaptive spatial attention
-    x = Conv2D(64, (15,1), padding='valid', strides=(1,1), activation='relu', kernel_regularizer=regularizers.l2(0.01))(inpt)
+    x = Conv2D(64, (15,1), padding='valid', strides=(1,1), activation='relu')(inpt)
     x = BatchNormalization(axis=-1)(x)
     x = MaxPooling2D(pool_size=(15,1), strides=(1,1), padding='same')(x)
     x = Flatten()(x)
-    spatial_output = Dense(width, kernel_regularizer=regularizers.l2(0.01))(x)
+    spatial_output = Dense(width)(x)
 
     # frame-level temperal attention
     y = Reshape((height, -1))(inpt)
     y = LSTM(height)(y)
-    temperal_output = Dense(height, kernel_regularizer=regularizers.l2(0.01))(y)
+    temperal_output = Dense(height)(y)
 
     # ST-MAP layer
     z = Lambda(attention_map, output_shape=(300, 25, channels), arguments={'channels': channels})([spatial_output, temperal_output, inpt])
@@ -190,7 +193,7 @@ def network_with_attention(height, width, channels, classes):
 
     res = AveragePooling2D(pool_size=(7, 1))(res)
     res = Flatten()(res)
-    res = Dense(1, name='resnet_result', kernel_regularizer=regularizers.l2(0.01))(res)
+    res = Dense(1, name='resnet_result')(res)
     class_result = Activation('sigmoid')(res)
 
     model = Model(inputs=[inpt, inpt_x], outputs=class_result)
@@ -206,6 +209,12 @@ def to_be_2d(y):
             ny[i,1] = 1
     return ny
 
+def normalize_rppg(data):
+    mean = np.mean(data, axis=(1, 2, 3), keepdims=True)
+    std = np.std(data, axis=(1, 2, 3), keepdims=True)
+    std[std == 0] = 1e-7  # Handle zero standard deviation
+    return (data - mean) / std
+    
 data_path = "/kaggle/input/generate-training-data/"
 #data_path = "/kaggle/input/generating-dataset/"
 save_path = "/kaggle/working/model/"
@@ -228,27 +237,37 @@ if __name__=="__main__":
         print("No data")
         sys.exit(0)
 
+    mit_list = normalize_rppg(mit_list)
+
     model = network_with_attention(300, 25, 3, 2)
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    optimizer = AdamW(learning_rate=0.01, weight_decay=0.01)
+    
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     model.summary()
 
-    indices = np.arange(len(y_list))  # Create an array of indices
-    np.random.shuffle(indices)  # Shuffle the indices
+    # 1. First split: 70% train, 30% temp (val+test)
+    x_train_mit, x_temp_mit, x_train_meso, x_temp_meso, y_train, y_temp = train_test_split(
+       mit_list, Meso_list, y_list,
+       test_size=0.3,  # 30% goes to temp (val+test)
+       random_state=42,
+       stratify=y_list
+    )
 
-    test_num = 200  # Define test size
-    test = indices[:test_num]  # First 200 for testing
-    train = indices[test_num:]  # The rest for training
+    # 2. Split temp into 20% val and 10% test of original (66.6%/33.3% of temp)
+    x_val_mit, x_test_mit, x_val_meso, x_test_meso, y_val, y_test = train_test_split(
+        x_temp_mit, x_temp_meso, y_temp,
+       test_size=0.333,  # 10%/30% = 0.333
+       random_state=42,
+       stratify=y_temp
+    )
 
-    x_train_mit = mit_list[train]
-    x_train_meso = Meso_list[train]
-    y_train = y_list[train]
-
-    x_test_mit = mit_list[test]
-    x_test_meso = Meso_list[test]
-    y_test = y_list[test]
-
-    print("Training Data Shape:", x_train_mit.shape, x_train_meso.shape)
-    print("Testing Data Shape:", x_test_mit.shape, x_test_meso.shape)
+    print(f"Train: {len(y_train)}, Val: {len(y_val)}, Test: {len(y_test)}")
+    print("Class distribution:")
+    print(f"Train: {np.unique(y_train, return_counts=True)}")
+    print(f"Val: {np.unique(y_val, return_counts=True)}")
+    print(f"Test: {np.unique(y_test, return_counts=True)}")
+   
 
     best_val_acc  = 0
 
@@ -268,11 +287,10 @@ if __name__=="__main__":
             
     callbacks = [early_stopping, LambdaCallback(on_epoch_end=saveBestModel)]
 
+   
+    history = model.fit([x_train_mit, x_train_meso], y_train,validation_data=([x_val_mit, x_val_meso], y_val), batch_size=batch_size, epochs=epochs, verbose=1, callbacks=callbacks) # callbacks=[PredictionCallback()]
+    # model.save('/WORKSPACE/VIDEO/ff++/final_data/model/ffpp_train_DFD.h5')
 
-    history = model.fit([x_train_mit, x_train_meso], y_train, batch_size=batch_size, epochs=epochs, verbose=1, validation_split=0.2, callbacks=callbacks) 
-
-    ## testing
-    model = load_model("/kaggle/working/model/df_ytb_Meso.h5", custom_objects={'X_plus_Layer': X_plus_Layer, 'attention_map': attention_map})
-    loss, accuracy = model.evaluate([x_test_mit, x_test_meso], y_test, batch_size=32, verbose=1)
-    print(f"Test Accuracy: {accuracy}")
-    print(f"Test Loss: {loss:.4f}")
+    # model = load_model('/WORKSPACE/example/model/with_attention.h5', custom_objects={'multiply':multiply, 'Add':Add})
+    # model.summary()
+    # model.evaluate(x_list, y_list, metrics=['accuracy'])
