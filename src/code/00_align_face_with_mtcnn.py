@@ -11,7 +11,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 print("Preparing dlib ... ", end='', flush=True)
 detector = dlib.get_frontal_face_detector()
-predictor_path = '/kaggle/input/faceforensics/final_output/original_sequences/youtube/c23/'
+predictor_path = '/kaggle/input/shape-predictor-dataset/shape_predictor_81_face_landmarks.dat'
 predictor = dlib.shape_predictor(predictor_path)
 print("Done")
 print("Preparing MTCNN ... ", end='', flush=True)
