@@ -1,4 +1,3 @@
-#util_mit.py
 import numpy as np
 import dlib
 import cv2

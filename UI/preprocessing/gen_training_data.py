@@ -1,75 +1,69 @@
-# !sudo apt install cmake
-# !pip install face_recognition
-mesonet_repo_path = "/kaggle/input/mesonetrewa"
-import sys
-sys.path.append(mesonet_repo_path) # sys.path is a list of dirs where Python searches for the modules, and hence this dir is totally different from curr workingdir /kaggle/working, hence we need to append it separately
-import numpy as np
-from classifiers import *
-from pipeline import *
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from keras.models import load_model
 import os
 import cv2
+import numpy as np
+import contextlib
+from preprocessing.Mesonet.classifiers import MesoInception4
 
-# Ensure TensorFlow uses only CPU
-# os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-import tensorflow as tf
-tf.config.set_visible_devices([], 'GPU')
 
-# Load the MesoInception4 model with pretrained weights
-classifier = MesoInception4()
-classifier.load('/kaggle/input/mesonetrewa/weights/MesoInception_F2F.h5')
-
-# Directory containing deepfake videos
-fake_video_dir = "/kaggle/working/resize_frames_f2f_1000/manipulated_sequences/Face2Face/c23"
-fake_vid_list = os.listdir(fake_video_dir)
-fake_vid_list.sort()
-fake_vid_dict = {x.replace('.avi', ''): os.path.join(fake_video_dir, x) for x in fake_vid_list}
-
-# Save directory
-save_path = "model_save_path/"
-if not os.path.exists(save_path):
-    os.mkdir(save_path)
-    print(f"Created save directory: {save_path}")
-
-# Data storage
-data_Meso_set = []
-data_name_set = []
-
-for vid_name in fake_vid_dict:
-    vid_path = fake_vid_dict[vid_name] + '/'
-    img_list = os.listdir(vid_path)
-    img_list = [img for img in img_list if '_face' not in img]  # Ignore face-segmented images
-    img_list.sort()
+def process_meso_data(real_video_dir, fake_video_dir, fake_mit_dir, real_mit_dir, model_weights_path, save_path):
+    save_path = "./EX_STORE/Beauty_app/df_ytb_c23/"
+    classifier = MesoInception4()
+    classifier.load(model_weights_path)
     
-    if not img_list:
-        print(f"No images found in {vid_path}. Skipping video.")
-        continue
+    real_vid_list = sorted(os.listdir(real_video_dir))
+    fake_vid_list = sorted(os.listdir(fake_video_dir))
     
-    data_Meso = np.ones(300) * 0.5  # Initialize array with neutral values
-    try:
-        for img_name in img_list:
-            frame_idx = int(img_name[:-4])  # Extract frame number
-            if frame_idx >= 300:
-                continue  # Only consider first 300 frames
+    video_dict = {x: os.path.join(real_video_dir, x) for x in real_vid_list}
+    video_dict.update({x: os.path.join(fake_video_dir, x) for x in fake_vid_list})
+    
+    data_name_list = real_vid_list + fake_vid_list
+    
+    fake_mit_dict = {x: os.path.join(fake_mit_dir, x, f'{x}.npy') for x in os.listdir(fake_mit_dir)}
+    real_mit_dict = {x: os.path.join(real_mit_dir, x, f'{x}.npy') for x in os.listdir(real_mit_dir)}
+    
+    mit_dict = {**fake_mit_dict, **real_mit_dict}
+    
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    
+    data_Meso_set, data_mit_set, data_y_set, data_name_set = [], [], [], []
+    
+    for vid_name in data_name_list:
+        print(f"Processing video: {vid_name}", end='', flush=True)
+        
+        if vid_name + ".avi" in mit_dict:
+            print(" y")
             
-            img_path = os.path.join(vid_path, img_name)
-            img = cv2.imread(img_path)
-            if img is None:
-                print(f"Failed to load image {img_name}. Skipping.")
+            vid_path = os.path.join(video_dict[vid_name])
+            img_list = sorted([img for img in os.listdir(vid_path) if "_face" not in img])
+            if not img_list:
                 continue
             
-            img = cv2.resize(img, (256, 256))
-            pred = classifier.predict(np.array([img]))
-            data_Meso[frame_idx] = pred  # Store prediction at correct index
-    except Exception as e:
-        print(f"Error processing video {vid_name}: {e}")
-        continue
+            data_Meso = np.ones(300) * 0.5
+            try:
+                for img_name in img_list:
+                    img_index = int(img_name[:-4])
+                    if img_index >= 300:
+                        continue
+                    
+                    img_path = os.path.join(vid_path, img_name)
+                    with open(os.devnull, 'w') as f, contextlib.redirect_stdout(f):
+                        img = cv2.resize(cv2.imread(img_path), (256, 256))
+                        pred = classifier.predict(np.array([img]))
+                        data_Meso[img_index] = pred
+            except Exception:
+                continue
+            
+            data_Meso_set.append(data_Meso)
+            data_mit_set.append(np.load(mit_dict[vid_name + ".avi"]))
+            data_y_set.append(1 if "_" in vid_name else 0)
+            data_name_set.append(vid_name)
+            print(data_y_set[-1])
     
-    data_Meso_set.append(data_Meso)
-    data_name_set.append(vid_name)
-
-# Save only Meso.npy
-np.save(os.path.join(save_path, "Meso_f2f.npy"), data_Meso_set)
-np.save(os.path.join(save_path, "name_f2f.npy"), data_name_set)
-print("Meso_f2f.npy and name_f2f.npy saved successfully for f2f videos.")
+    print("SAVING .... ")
+    np.save(os.path.join(save_path, "Meso.npy"), data_Meso_set)
+    np.save(os.path.join(save_path, "mit.npy"), data_mit_set)
+    np.save(os.path.join(save_path, "y.npy"), data_y_set)
+    np.save(os.path.join(save_path, "name.npy"), data_name_set)
+    
+    print("Processing complete!")

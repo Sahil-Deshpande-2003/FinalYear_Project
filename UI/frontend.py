@@ -10,13 +10,19 @@ API_URL = "http://127.0.0.1:8000/analyze"  # FastAPI backend URL
 st.set_page_config(layout="wide")
 
 # Add title at the top left and navigation link at the top right
+# Centered and bold title
+# Centered bold large title and right-aligned link
 st.markdown("""
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>Deepfake Detection</h1>
+    <div style="text-align: center;">
+        <h1 style="font-weight: bold; font-size: 80px; margin-bottom: 0;">Deepfake Detection</h1>
+    </div>
+    <div style="text-align: right; margin-top: 0;">
         <a href="another_page.py" style="font-size: 18px; text-decoration: none;">Go to Another Page</a>
     </div>
     <hr>
 """, unsafe_allow_html=True)
+
+
 
 # Define columns
 col1, col2 = st.columns([1, 1])
@@ -59,6 +65,6 @@ with col1:
 
 with col2:
     # Display the image
-    image_path = r"D:\Btech_Project\Frontend\DALL·E-2025-03-26-17.15.40-A-visually-striking-deepfake-detection-concept.jpg"
+    image_path = r"DALL·E-2025-03-26-17.15.40-A-visually-striking-deepfake-detection-concept.jpg"
     image = Image.open(image_path)
     st.image(image, use_column_width=True)

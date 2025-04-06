@@ -1,4 +1,3 @@
-#util_img.py
 import dlib
 import cv2
 import numpy as np
@@ -202,10 +201,13 @@ def preprocess_video(video_file_name, detector, predictor, mtcnn, vidpath, facep
     video_file_path = vidpath
     face_align_dir = facepath
 
+    print(f'face_align_dir = {face_align_dir}')
+
     margin = (20, 20, 20, 20) # (start_point_x & y, end_point_x & y)
     batch_size = 30
 
     first_frame_distance = None
+    print(f'video_file_path = {video_file_path}')
     video = cv2.VideoCapture(video_file_path)
     face_imgs = []
     idx = 0
@@ -216,6 +218,7 @@ def preprocess_video(video_file_name, detector, predictor, mtcnn, vidpath, facep
         # ttime = time.time()
         success, frame = video.read()
         if not success:
+            print("Not SUCCESS!!!!!!!!")
             break
         height, width = frame.shape[:2]
         frames.append(frame)
@@ -227,10 +230,10 @@ def preprocess_video(video_file_name, detector, predictor, mtcnn, vidpath, facep
             batch_boxes, _ = mtcnn.detect(frames)
             pos = 0
             for boxes in batch_boxes:
-                #print("  %04d ... " % (idx - batch_size + pos), end='', flush=True)
+                print("  %04d ... " % (idx - batch_size + pos), end='', flush=True)
                 # print(box.shape)
                 if boxes is None:
-                    #print("Done, there is no face")
+                    print("Done, there is no face")
                     continue
                 st = [int(boxes[0,0]-margin[0]), int(boxes[0,1]-margin[1])]
                 ed = [int(boxes[0,2]+margin[2]), int(boxes[0,3]+margin[3])]
@@ -252,14 +255,13 @@ def preprocess_video(video_file_name, detector, predictor, mtcnn, vidpath, facep
                 if first_frame_center is None:
                     first_frame_center = center
                 if pre_img is not None:
-                    #print("Done, saving ... ", end='', flush=True)
+                    print("Done, saving ... ", end='', flush=True)
                     cv2.imwrite(face_align_dir + ("%04d.jpg" % (idx - batch_size + pos)), pre_img)
                     # cv2.imwrite(face_align_dir + ("%04d.jpg" % (idx - batch_size + pos)), pre_img)
                     np.save(face_align_dir + ("%04d_landmark.npy" % (idx - batch_size + pos)), landmark)
-                    #print("Done")
+                    print("Done")
                 else :
-                    #print("Done, no face")
-                    pass
+                    print("Done, no face")
 
                 # face_imgs.append(face_img)
                 # print(idx)
