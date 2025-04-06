@@ -243,14 +243,14 @@ print("LIFE BEFORE MODEL")
 
 model = load_model("temp (1).h5", custom_objects={'X_plus_Layer': X_plus_Layer, 'AttentionMapLayer': AttentionMapLayer})
 
-x_test_mit = np.load(r'EX_STORE\Beauty_app\dfdc\stmap\tmpaxy1a0e_.avi\tmpaxy1a0e_.avi.npy')
+x_test_mit = np.load(r'EX_STORE\Beauty_app\dfdc\stmap\tmp_he4ttac.avi\tmp_he4ttac.avi.npy')
 x_test_meso = np.load('Meso.npy')
 x_test_mit = np.expand_dims(x_test_mit, axis=0)   # (1, 300, 25, 3)
 x_test_meso = np.expand_dims(x_test_meso, axis=0) # (1, ...your meso shape...)
 
 
-print(f"x_test_mit = {x_test_mit}")
-print(f"x_test_meso = {x_test_meso}")
+# print(f"x_test_mit = {x_test_mit}")
+# print(f"x_test_meso = {x_test_meso}")
 
 predictions = model.predict([x_test_mit, x_test_meso], batch_size=1, verbose=1)
 # predictions = model.predict([x_test_mit, x_test_meso], verbose=1)
