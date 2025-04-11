@@ -16,9 +16,6 @@ st.markdown("""
     <div style="text-align: center;">
         <h1 style="font-weight: bold; font-size: 80px; margin-bottom: 0;">Deepfake Detection</h1>
     </div>
-    <div style="text-align: right; margin-top: 0;">
-        <a href="another_page.py" style="font-size: 18px; text-decoration: none;">Go to Another Page</a>
-    </div>
     <hr>
 """, unsafe_allow_html=True)
 
@@ -65,6 +62,16 @@ with col1:
 
 with col2:
     # Display the image
-    image_path = r"DALL·E-2025-03-26-17.15.40-A-visually-striking-deepfake-detection-concept.jpg"
+    image_path = r"img_final.png"
     image = Image.open(image_path)
     st.image(image, use_column_width=True)
+
+# Footer with group members and guide
+st.markdown("""<hr>""", unsafe_allow_html=True)
+st.markdown("""
+    <div style="text-align: center; font-size: 18px;">
+            <p><strong>Guide:</strong> Prof. Pratiksha Deshmukh</p>
+        <p><strong>Group Members:</strong> Sahil Deshpande, Sidhesh Lawangare, Rewa Saykar</p>
+    </div>
+""", unsafe_allow_html=True)
+
