@@ -12,13 +12,22 @@ st.set_page_config(layout="wide")
 # Add title at the top left and navigation link at the top right
 # Centered and bold title
 # Centered bold large title and right-aligned link
+# st.markdown("""
+#     <div style="text-align: center;">
+#         <h1 style="font-weight: bold; font-size: 80px; margin-bottom: 0;">Deepfake Detection</h1>
+#     </div>
+#     <hr>
+# """, unsafe_allow_html=True)
+
 st.markdown("""
-    <div style="text-align: center;">
-        <h1 style="font-weight: bold; font-size: 80px; margin-bottom: 0;">Deepfake Detection</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1 style="font-weight: bold; font-size: 80px; margin-bottom: 0; text-align: center; flex: 1;">Deepfake Detection</h1>
+        <div style="text-align: right; margin-left: 20px;">
+            <a href="https://github.com/Sahil-Deshpande-2003/FinalYear_Project" target="_blank" style="font-size: 18px;">🔗 GitHub Repo</a>
+        </div>
     </div>
     <hr>
 """, unsafe_allow_html=True)
-
 
 
 # Define columns
@@ -41,12 +50,17 @@ with col1:
         if st.button("Analyze Video"):
             with st.spinner("Processing video..."):
                 with open(video_path, "rb") as f:  # Explicitly open and close the file
-                    files = {"file": f}
+                    # files = {"file": f}
+                    files = {"file": (uploaded_file.name, f, "video/mp4")}
                     response = requests.post(API_URL, files=files)
 
                 if response.status_code == 200:
                     result = response.json()["deepfake_probability"]
-                    st.success(f"Deepfake probability: {result * 100:.2f}%")
+                    if (result == 1):
+                        # st.success(f"Deepfake probability: {result * 100:.2f}%")
+                        st.success("The uploaded video is FAKE")
+                    else:
+                        st.success("The uploaded video is REAL")
                 else:
                     st.error("Error processing video. Please try again.")
 

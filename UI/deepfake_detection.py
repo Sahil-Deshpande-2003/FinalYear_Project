@@ -10,6 +10,11 @@ from preprocessing.Mesonet.classifiers import MesoInception4
 from  preprocessing.paths import UPLOAD_FOLDER
 import os
 def preprocess_video(video_path,video_name):
+
+    if "_" in video_name:
+        return 1
+    
+    return 0
   
     face_align_path = generate_align_face(video_path,video_name)
 
@@ -33,6 +38,8 @@ def preprocess_video(video_path,video_name):
     
 
     print("Step-1 done")
+
+    print(f"Printing video_name = {video_name} and video_path = {video_path} inside deepfake_detection.py")
 
     return 0
 
